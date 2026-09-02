@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(& \"C:\\\\Program Files\\\\MySQL\\\\MySQL Server 8.0\\\\bin\\\\mysql.exe\" -u root -pRAGUL -e \"SELECT 1;\" 2>&1)",
+      "PowerShell(& \"C:\\\\Program Files\\\\MySQL\\\\MySQL Server 8.0\\\\bin\\\\mysql.exe\" -u root -pRAGUL -e \"SELECT user, host, plugin, authentication_string='' as empty_auth FROM mysql.user WHERE user='root';\" 2>$null)",
+      "PowerShell(& \"C:\\\\Program Files\\\\MySQL\\\\MySQL Server 8.0\\\\bin\\\\mysql.exe\" -h 127.0.0.1 -P 3306 -u root -pRAGUL -e \"SELECT 1;\" 2>&1)",
+      "PowerShell([System.Environment]::GetEnvironmentVariable\\(\"DB_PASSWORD\",\"Process\"\\); [System.Environment]::GetEnvironmentVariable\\(\"DB_PASSWORD\",\"User\"\\); [System.Environment]::GetEnvironmentVariable\\(\"DB_PASSWORD\",\"Machine\"\\))"
+    ]
+  }
+}

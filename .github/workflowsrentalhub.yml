@@ -1,0 +1,43 @@
+# This workflow will build a package using Maven and then publish it to GitHub packages when a release is created
+# For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#apache-maven-with-a-settings-path
+name: Maven Build and Test  Worklow
+on:
+  workflow_dispatch: # This event allows manual triggering from the GitHub UI
+    inputs:
+      branch:
+        description: 'Branch to build'
+        required: true
+        default: 'master' # Default branch if not specified
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest # Use the latest Ubuntu environment
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4 # Action to checkout your repository's code
+        with:
+          ref: ${{ github.event.inputs.branch }} # Checkout the branch specified in the workflow_dispatch input
+   
+      - name: Set up JDK 17 # Specify the Java version you need
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin' # Recommended distribution
+
+      - name: Build with Maven
+        run: mvn -B clean package # Build the project and package the JAR
+        # This command builds the project and creates the JAR in the target directory
+        # The JAR name will be determined by your pom.xml (artifactId-version.jar)
+
+      - name: Run Tests with Maven
+        run: mvn -B test # Run the tests
+
+      # Removed the step to rename the JAR
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name }}
+          path: target/*.jar # Path to your generated JAR file(s) - uses the default name
+          retention-days: 5 # How long to keep the artifact (optional)

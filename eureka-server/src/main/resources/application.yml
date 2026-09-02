@@ -7,7 +7,7 @@ spring:
 
 eureka:
   instance:
-    hostname: localhost
+    hostname: ${EUREKA_HOSTNAME:localhost}
     eureka:
       instance:
         prefer-ip-address: true

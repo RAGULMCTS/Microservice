@@ -1,0 +1,15 @@
+.git
+.gitignore
+.idea
+.vscode
+.github
+*.md
+.env
+.env.*
+!.env.example
+
+**/target/
+**/*.iml
+
+docker
+docker-compose.yml

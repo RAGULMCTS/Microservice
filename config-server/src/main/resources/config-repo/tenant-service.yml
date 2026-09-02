@@ -2,10 +2,10 @@ server:
   port: 8093
 
 jwt:
-  secret: 8I+OZuDbv5Ym9X1UcrcnxJH4NYR/wW1a8qxhcR1BoYA=
+  secret: ${JWT_SECRET}
   expiration: 86400000
 
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:8761}/eureka/

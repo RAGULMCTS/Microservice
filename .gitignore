@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Docker / secrets ###
+.env
+.env.*
+!.env.example

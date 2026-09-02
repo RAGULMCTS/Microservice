@@ -1,0 +1,148 @@
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: renthub-mysql
+    restart: unless-stopped
+    environment:
+      # Root password used only once, by MySQL itself, to run init-db.sh.
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      # Passed through to init-db.sh, which creates a scoped, non-root
+      # application user with access to only the two RentHub databases.
+      MYSQL_APP_USER: ${DB_USERNAME}
+      MYSQL_APP_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  eureka-server:
+    build:
+      context: .
+      dockerfile: eureka-server/Dockerfile
+    container_name: renthub-eureka
+    restart: unless-stopped
+    environment:
+      EUREKA_HOSTNAME: eureka-server
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8761/"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  config-server:
+    build:
+      context: .
+      dockerfile: config-server/Dockerfile
+    container_name: renthub-config-server
+    restart: unless-stopped
+    # config-server itself has no secrets and isn't a Eureka client -
+    # it doesn't need to wait on anything.
+    ports:
+      - "8888:8888"
+    healthcheck:
+      # /{application}/{profile} is config-server's own built-in endpoint;
+      # a 200 here means it has loaded config-repo and is ready to serve it.
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8888/eureka-server/default"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: renthub-api-gateway
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/actuator/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    container_name: renthub-user-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    ports:
+      - "8091:8091"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8091/actuator/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  property-service:
+    build:
+      context: .
+      dockerfile: property-service/Dockerfile
+    container_name: renthub-property-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    ports:
+      - "8092:8092"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8092/actuator/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  tenant-service:
+    build:
+      context: .
+      dockerfile: tenant-service/Dockerfile
+    container_name: renthub-tenant-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    ports:
+      - "8093:8093"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8093/actuator/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mysql-data:

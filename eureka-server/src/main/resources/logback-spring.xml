@@ -24,6 +24,13 @@
         </rollingPolicy>
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <customFields>{"service":"${SERVICE_NAME}"}</customFields>
+            <!-- Renamed from the default "@timestamp" so props.conf's TIME_PREFIX
+                 (splunk/etc/apps/renthub_app/default/props.conf) can match a plain
+                 field name - both are equally valid JSON, this is just simpler to
+                 teach index-time field extraction against. -->
+            <fieldNames>
+                <timestamp>timestamp</timestamp>
+            </fieldNames>
         </encoder>
     </appender>
 

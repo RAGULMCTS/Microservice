@@ -1,0 +1,123 @@
+<form version="1.1" theme="light">
+  <label>RentHub Service Health</label>
+  <description>Logs (renthub_logs), business events (renthub_events) and JVM metrics (renthub_metrics) for the RentHub microservices. See docs/SPLUNK_GUIDE.md for the SPL behind every panel.</description>
+
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="tr">
+      <label>Time range</label>
+      <default>
+        <earliest>-60m</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="text" token="svc_filter" searchWhenChanged="true">
+      <label>Filter by service (click a bar below to set this too)</label>
+      <default>*</default>
+    </input>
+    <input type="text" token="requestId" searchWhenChanged="true">
+      <label>Trace a request ID</label>
+      <default>*</default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <title>Events over time by service</title>
+      <chart>
+        <search>
+          <query>index=renthub_logs OR index=renthub_events
+| timechart span=1m count by service</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <drilldown>
+          <set token="svc_filter">$click.name2$</set>
+        </drilldown>
+      </chart>
+    </panel>
+    <panel>
+      <title>Log error rate % (renthub_logs)</title>
+      <chart>
+        <search>
+          <query>index=renthub_logs service=$svc_filter$
+| timechart span=1m count(eval(level="ERROR")) as errors count as total
+| eval error_pct=round(errors/total*100,2)
+| fields _time error_pct</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Top error messages (service=$svc_filter$)</title>
+      <table>
+        <search>
+          <query>index=renthub_logs level=ERROR service=$svc_filter$
+| top limit=10 message service</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+      </table>
+    </panel>
+    <panel>
+      <title>Auth failures by username</title>
+      <chart>
+        <search>
+          <query>`renthub_by_service("user-service")`
+index=renthub_events type=user_login_failure
+| timechart span=5m count by username</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Trace one request across every service (requestId=$requestId$)</title>
+      <table>
+        <search>
+          <query>(index=renthub_logs OR index=renthub_events) requestId=$requestId$
+| eval time=strftime(_time,"%Y-%m-%d %H:%M:%S.%3N")
+| table time index service level type message status durationMs requestId
+| sort time</query>
+          <earliest>-24h</earliest>
+          <latest>now</latest>
+        </search>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>JVM heap used by service (renthub_metrics, mstats)</title>
+      <chart>
+        <search>
+          <query>| mstats avg("jvm.memory.heap.used") as heap_used_bytes WHERE index=renthub_metrics span=1m BY service</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Request/error counters by service (renthub_metrics, mstats)</title>
+      <chart>
+        <search>
+          <query>| mstats latest("http.request.count") as requests latest("http.error.count") as errors WHERE index=renthub_metrics BY service</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+      </chart>
+    </panel>
+  </row>
+</form>

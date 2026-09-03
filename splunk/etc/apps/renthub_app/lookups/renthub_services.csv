@@ -1,0 +1,7 @@
+service,port,owner_team,tier
+eureka-server,8761,platform,infra
+config-server,8888,platform,infra
+api-gateway,8080,platform,edge
+user-service,8091,identity,core
+property-service,8092,listings,core
+tenant-service,8093,listings,core

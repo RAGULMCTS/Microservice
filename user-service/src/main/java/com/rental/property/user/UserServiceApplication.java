@@ -11,12 +11,14 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Set;
 
 @SpringBootApplication
 @EnableDiscoveryClient
+@EnableScheduling
 @Slf4j
 @RequiredArgsConstructor
 public class UserServiceApplication implements CommandLineRunner {

@@ -22,6 +22,55 @@ services:
       timeout: 5s
       retries: 10
 
+  # ---- Splunk: single-instance indexer/search head, bootstrapped with HEC
+  # enabled and the "renthub_app" app (indexes/props/transforms/dashboards/
+  # alerts - see splunk/etc/apps/renthub_app) baked in via a bind mount.
+  splunk:
+    image: splunk/splunk:9.3
+    container_name: renthub-splunk
+    restart: unless-stopped
+    environment:
+      SPLUNK_START_ARGS: --accept-license
+      SPLUNK_PASSWORD: ${SPLUNK_PASSWORD}
+      # Officially-supported first-boot HEC bootstrap: the image creates a
+      # token with this exact value and enables HEC on port 8088, no
+      # hand-rolled default.yml required.
+      SPLUNK_HEC_TOKEN: ${SPLUNK_HEC_TOKEN}
+      SPLUNK_HEC_SSL: "0"
+    volumes:
+      - splunk-etc:/opt/splunk/etc
+      - splunk-var:/opt/splunk/var
+      - ./splunk/etc/apps/renthub_app:/opt/splunk/etc/apps/renthub_app
+    ports:
+      - "8000:8000"   # Splunk web UI
+      - "8088:8088"   # HTTP Event Collector
+      - "8089:8089"   # splunkd management API
+      - "9997:9997"   # forwarder (splunktcp) receiving port
+    healthcheck:
+      test: ["CMD", "curl", "-sk", "https://localhost:8089/services/server/info"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
+
+  # ---- Universal Forwarder: tails every service's JSON log file (written to
+  # the shared renthub-logs volume by logback) and forwards to "splunk" over
+  # 9997. Deliberately separate from the HEC path below - see
+  # docs/SPLUNK_GUIDE.md for why RentHub uses both onboarding methods.
+  splunk-uf:
+    image: splunk/universalforwarder:9.3
+    container_name: renthub-splunk-uf
+    restart: unless-stopped
+    environment:
+      SPLUNK_START_ARGS: --accept-license
+      SPLUNK_PASSWORD: ${SPLUNK_PASSWORD}
+    volumes:
+      - renthub-logs:/var/log/renthub:ro
+      - ./splunk/uf-apps/renthub_uf:/opt/splunkforwarder/etc/apps/renthub_uf
+    depends_on:
+      splunk:
+        condition: service_healthy
+
   eureka-server:
     build:
       context: .
@@ -30,6 +79,10 @@ services:
     restart: unless-stopped
     environment:
       EUREKA_HOSTNAME: eureka-server
+    env_file:
+      - .env
+    volumes:
+      - renthub-logs:/var/log/renthub
     ports:
       - "8761:8761"
     healthcheck:
@@ -45,7 +98,12 @@ services:
     container_name: renthub-config-server
     restart: unless-stopped
     # config-server itself has no secrets and isn't a Eureka client -
-    # it doesn't need to wait on anything.
+    # it doesn't need to wait on anything. It only needs .env now for the
+    # Splunk HEC token used to publish its own JVM metrics.
+    env_file:
+      - .env
+    volumes:
+      - renthub-logs:/var/log/renthub
     ports:
       - "8888:8888"
     healthcheck:
@@ -64,6 +122,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    volumes:
+      - renthub-logs:/var/log/renthub
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -85,6 +145,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    volumes:
+      - renthub-logs:/var/log/renthub
     depends_on:
       mysql:
         condition: service_healthy
@@ -108,6 +170,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    volumes:
+      - renthub-logs:/var/log/renthub
     depends_on:
       mysql:
         condition: service_healthy
@@ -131,6 +195,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    volumes:
+      - renthub-logs:/var/log/renthub
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -146,3 +212,6 @@ services:
 
 volumes:
   mysql-data:
+  splunk-etc:
+  splunk-var:
+  renthub-logs:

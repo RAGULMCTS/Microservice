@@ -21,3 +21,8 @@ eureka:
   client:
     service-url:
       defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:8761}/eureka/
+
+splunk:
+  hec:
+    url: ${SPLUNK_HEC_URL:http://localhost:8088}
+    token: ${SPLUNK_HEC_TOKEN:}

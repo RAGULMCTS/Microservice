@@ -30,6 +30,11 @@ FROM eclipse-temurin:17-jre-alpine
 # Run as a non-root user so a compromised app process can't touch the
 # rest of the container/host as root.
 RUN addgroup -S spring && adduser -S spring -G spring
+
+# Pre-create the log dir owned by "spring" - on first mount, Docker copies
+# this image path's contents (and ownership) into the fresh named volume
+# mounted here by docker-compose, so the non-root JVM can write to it.
+RUN mkdir -p /var/log/renthub/eureka-server && chown -R spring:spring /var/log/renthub
 USER spring:spring
 
 WORKDIR /app

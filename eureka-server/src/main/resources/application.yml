@@ -19,3 +19,8 @@ eureka:
       defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
   server:
     enable-self-preservation: false
+
+splunk:
+  hec:
+    url: ${SPLUNK_HEC_URL:http://localhost:8088}
+    token: ${SPLUNK_HEC_TOKEN:}

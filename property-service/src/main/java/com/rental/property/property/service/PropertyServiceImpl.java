@@ -4,14 +4,17 @@ import com.rental.property.property.dto.PropertyDto;
 import com.rental.property.property.entity.Property;
 import com.rental.property.property.exception.PropertyNotFoundException;
 import com.rental.property.property.repo.PropertyRepository;
+import com.rental.property.property.splunk.SplunkHecClient;
 import com.rental.property.property.util.EntityMapper;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 @RequiredArgsConstructor
 @Service
 public class PropertyServiceImpl  implements PropertyService{
@@ -21,11 +24,21 @@ public class PropertyServiceImpl  implements PropertyService{
     @Autowired
     private  final EntityMapper entityMapper;
 
+    @Autowired
+    private final SplunkHecClient splunkHecClient;
+
     @Override
     public PropertyDto addNewProperty(PropertyDto propertyDto, MultipartFile image) throws IOException {
         Property propObj=entityMapper.convertPropDtoToProperty(propertyDto);
         propObj.setImage1(image.getBytes());
         Property savedProp= propertyRepository.save(propObj);
+        splunkHecClient.sendEvent("renthub:appevent", "renthub_events", Map.of(
+                "type", "property_created",
+                "service", "property-service",
+                "propertyId", String.valueOf(savedProp.getPropertyId()),
+                "ownerId", String.valueOf(propertyDto.getOwnerId()),
+                "requestId", String.valueOf(MDC.get("requestId"))
+        ));
         return entityMapper.covertPropToPropDto(savedProp);
     }
 
